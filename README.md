@@ -7,7 +7,7 @@ Components required :
 3. 1 x Waterproof Ultrasonic sensor with its sensor module(I used teh HCSR04 unit)
 4. 1 x LCD(I used the 16x2 LCD display)
 5. 1 x DS1307 RTC
-6. 7 x LED(better if of diiferent colours each)
+6. 7 x LED(better if of different colours each)
 
 Components required for making the 8051 basic circuit :
 1. 1 x 10uF/16V Electrolytic capacitor
