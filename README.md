@@ -1,5 +1,6 @@
 # Walicator
-C Code for live monitoring of the water level in overhead tanks based on 8051 circuitry with ultrasonic sensor, LCD, LEDs, and DS1307 RTC. It was written as a project in Keil and uses the Microchip AT89C51 library. 
+C Code for live monitoring of the water level in overhead tanks based on 8051 circuitry with ultrasonic sensor, LCD, LEDs, and DS1307 RTC. It was written as a project in Keil and uses the Microchip AT89C51 library.
+
 Components required :
 1. 8051 MCU(any manufacturer, I have used the one by ATMEL)
 2. Basic 8051 Circuitry(you can make one using a few components which I have mentioned in the last or can even use a ready to use 8051 development board)
