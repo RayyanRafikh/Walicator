@@ -1,0 +1,223 @@
+C51 COMPILER V9.60.0.0   WALICATOR                                                         08/04/2021 20:48:09 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE WALICATOR
+OBJECT MODULE PLACED IN .\Objects\walicator.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE walicator.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\walicator.lst) TABS(2) OBJECT(.\Objects\walicator.obj)
+
+line level    source
+
+   1          #include <reg52.h>
+   2          #include <stdio.h>
+   3          #include <LCD_8_bit.h>
+   4          #include <math.h>
+   5          
+   6          #define sound_velocity 34300    /* sound velocity in cm per second */
+   7          #define period_in_us pow(10,-6)
+   8          #define Clock_period 1.085*period_in_us   /* Frequency for timer of 8051 with 11.0592 MHz crystal is 1/12th
+             - of 11.0592 MHz which is 921.6 MHz, therefore timer period is 1/(timer frequency)*/
+   9          
+  10          sbit Trigger_pin = P1^3;          /* Trigger pin on the HCSR04 module*/
+  11          sbit Echo_pin = P1^4;             /* Echo pin on the HCSR04 module*/
+  12          sbit led_full = P3^7; 
+  13          sbit led_almostfull = P3^6;
+  14          sbit led_semifull = P3^5;
+  15          sbit led_half = P3^4;
+  16          sbit led_quarter = P3^3;
+  17          sbit led_low = P3^2;
+  18          sbit led_empty = P3^1;
+  19          
+  20          void Delay_us()
+  21          {
+  22   1          TL0=0xF5;
+  23   1          TH0=0xFF;
+  24   1          TR0=1;
+  25   1          while (TF0==0);
+  26   1          TR0=0;
+  27   1          TF0=0;
+  28   1      }
+  29          
+  30          void init_timer(){
+  31   1        TMOD=0x01;                    /*initialize Timer*/
+  32   1        TF0=0;
+  33   1        TR0 = 0;
+  34   1      }
+  35          
+  36          void send_trigger_pulse(){
+  37   1          Trigger_pin= 1;             /* pull trigger pin HIGH */
+  38   1          Delay_us();                 /* provide 10uS Delay*/
+  39   1          Trigger_pin = 0;            /* pull trigger pin LOW*/
+  40   1      }
+  41          
+  42          void main(){
+  43   1        float tank_length = 235.0;           /* length of tank in cm */
+  44   1        float tank_breadth = 261.0;          /* breadth of tank in cm*/
+  45   1        float tank_height = 90.0;            /*height of tank in cm*/
+  46   1        float tank_remainingwaterheight;   /* height of water left in tank*/
+  47   1        float tank_heightpercent;          /*percentage of height of water left in tank*/
+  48   1        float tank_remainingwatervolume;   /*volume of water left in tank*/
+  49   1        float percent_water;               /*percentage of volume of water left in tank*/
+  50   1        float distance_measurement;      /* distance between sensor probe and surface of water in cm */
+  51   1        float value;
+  52   1        float max_heightpercent_detectable;
+  53   1        int min_dis = 2; /* minimum distance detectable by the ultrasonic sensor in cm */
+C51 COMPILER V9.60.0.0   WALICATOR                                                         08/04/2021 20:48:09 PAGE 2   
+
+  54   1        unsigned char percentage[10];     /* percentage of water as string(text)*/
+  55   1        LCD_Init();                       /* Initialize 16x2 LCD */ 
+  56   1        init_timer();                    /* Initialize Timer*/
+  57   1        
+  58   1        while(1){
+  59   2          send_trigger_pulse();       /* send trigger pulse of 10us */
+  60   2          
+  61   2          while(!Echo_pin);           /* Waiting for Echo */
+  62   2          TR0 = 1;                    /* Timer Starts */
+  63   2          while(Echo_pin && !TF0);    /* Waiting for Echo goes LOW */
+  64   2          TR0 = 0;                    /* Stop the timer */
+  65   2          
+  66   2          /* calculate distance with timer */
+  67   2          value = Clock_period*sound_velocity; 
+  68   2          distance_measurement = (TL0|(TH0<<8));                    /* read timer reg for time count */
+  69   2          distance_measurement = (distance_measurement*value)/2.0;  /* find distance(in cm) */
+  70   2          tank_remainingwaterheight = tank_height-distance_measurement;
+  71   2          tank_heightpercent = (tank_remainingwaterheight/tank_height)*100.0;
+  72   2          tank_remainingwatervolume = tank_remainingwaterheight*tank_breadth*tank_length;
+  73   2          percent_water = ((tank_remainingwatervolume/(tank_length*tank_breadth*tank_height))*100.0);
+  74   2          sprintf(percentage, "%.2f", percent_water);
+  75   2          max_heightpercent_detectable = (((tank_height-min_dis)/tank_height)*100.0);
+  76   2          if ((tank_heightpercent>0 && tank_heightpercent<6.0)){
+  77   3              LCD_String_xy(1,1,"                ");
+  78   3              LCD_String_xy(2,1,"                ");
+  79   3              led_empty = 1;
+  80   3              led_low = 0;
+  81   3              led_quarter = 0;
+  82   3              led_half = 0;
+  83   3              led_semifull = 0;
+  84   3              led_almostfull = 0;
+  85   3              led_full = 0;
+  86   3              LCD_String_xy(1,1,"Empty           ");          /* show distance on 16x2 LCD */
+  87   3              LCD_String_xy(2,1,"Water: ");   
+  88   3              LCD_String(percentage); 
+  89   3              LCD_String(" %");     
+  90   3              delay(100);
+  91   3            }
+  92   2            else if(tank_heightpercent>=6.0 && tank_heightpercent<21.0){
+  93   3              LCD_String_xy(1,1,"                ");
+  94   3              LCD_String_xy(2,1,"                ");
+  95   3              led_empty = 0;
+  96   3              led_low = 1;
+  97   3              led_quarter = 0;
+  98   3              led_half = 0;
+  99   3              led_semifull = 0;
+ 100   3              led_almostfull = 0;
+ 101   3              led_full = 0;
+ 102   3              LCD_String_xy(1,1,"Low             ");
+ 103   3              LCD_String_xy(2,1,"Water: ");                     
+ 104   3              LCD_String(percentage); 
+ 105   3              LCD_String(" %");     
+ 106   3              delay(100);
+ 107   3            }
+ 108   2            else if(tank_heightpercent>=21.0 && tank_heightpercent<38.0){
+ 109   3              LCD_String_xy(1,1,"                ");
+ 110   3              LCD_String_xy(2,1,"                ");
+ 111   3              led_empty = 0;
+ 112   3              led_low = 0;
+ 113   3              led_quarter = 1;
+ 114   3              led_half = 0;
+ 115   3              led_semifull = 0;
+C51 COMPILER V9.60.0.0   WALICATOR                                                         08/04/2021 20:48:09 PAGE 3   
+
+ 116   3              led_almostfull = 0;
+ 117   3              led_full = 0;
+ 118   3              LCD_String_xy(1,1,"Quarter full    ");
+ 119   3              LCD_String_xy(2,1,"Water: ");                       
+ 120   3              LCD_String(percentage); 
+ 121   3              LCD_String(" %");   
+ 122   3              delay(100);
+ 123   3            }
+ 124   2            else if(tank_heightpercent>=38.0 && tank_heightpercent<63.0){
+ 125   3              LCD_String_xy(1,1,"                ");
+ 126   3              LCD_String_xy(2,1,"                ");
+ 127   3              led_empty = 0;
+ 128   3              led_low = 0;
+ 129   3              led_quarter = 0;
+ 130   3              led_half = 1;
+ 131   3              led_semifull = 0;
+ 132   3              led_almostfull = 0;
+ 133   3              led_full = 0;
+ 134   3              LCD_String_xy(1,1,"Half full       ");
+ 135   3              LCD_String_xy(2,1,"Water: ");                       
+ 136   3              LCD_String(percentage); 
+ 137   3              LCD_String(" %");     
+ 138   3              delay(100);
+ 139   3            }
+ 140   2            else if(tank_heightpercent>=63.0 && tank_heightpercent<88.0){
+ 141   3              LCD_String_xy(1,1,"                ");
+ 142   3              LCD_String_xy(2,1,"                ");
+ 143   3              led_empty = 0;
+ 144   3              led_low = 0;
+ 145   3              led_quarter = 0;
+ 146   3              led_half = 0;
+ 147   3              led_semifull = 1;
+ 148   3              led_almostfull = 0;
+ 149   3              led_full = 0;
+ 150   3              LCD_String_xy(1,1,"Semi full       ");
+ 151   3              LCD_String_xy(2,1,"Water: ");                     
+ 152   3              LCD_String(percentage); 
+ 153   3              LCD_String(" %");   
+ 154   3              delay(100);
+ 155   3            }
+ 156   2            else if(tank_heightpercent>=88.0 && tank_heightpercent<94){
+ 157   3              LCD_String_xy(1,1,"                ");
+ 158   3              LCD_String_xy(2,1,"                ");
+ 159   3              led_empty = 0;
+ 160   3              led_low = 0;
+ 161   3              led_quarter = 0;
+ 162   3              led_half = 0;
+ 163   3              led_semifull = 0;
+ 164   3              led_almostfull = 1;
+ 165   3              led_full = 0;
+ 166   3              LCD_String_xy(1,1,"Almost full     ");
+ 167   3              LCD_String_xy(2,1,"Water: ");                       
+ 168   3              LCD_String(percentage); 
+ 169   3              LCD_String(" %");   
+ 170   3              delay(100);
+ 171   3            } 
+ 172   2            else{ /* in all other cases, that is 1. when the tank_heightpercent becomes negative(of any magnitude),
+             - i.e. when the distance becomes greater 
+ 173   3              than height(which is an error which occurs only when the object is 
+ 174   3              within 5-7 cm from the sensor) and when the tank_heightpercent > 100*/
+ 175   3              LCD_String_xy(1,1,"                ");
+ 176   3              LCD_String_xy(2,1,"                ");
+C51 COMPILER V9.60.0.0   WALICATOR                                                         08/04/2021 20:48:09 PAGE 4   
+
+ 177   3              led_empty = 0;
+ 178   3              led_low = 0;
+ 179   3              led_quarter = 0;
+ 180   3              led_half = 0;
+ 181   3              led_semifull = 0;
+ 182   3              led_almostfull = 0;
+ 183   3              led_full = 1;
+ 184   3              LCD_String_xy(1,1,"Full            ");
+ 185   3              LCD_String_xy(2,1,"Water: ");                       
+ 186   3              LCD_String(percentage); 
+ 187   3              LCD_String(" %");   
+ 188   3              delay(100);
+ 189   3            }
+ 190   2          }
+ 191   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1091    ----
+   CONSTANT SIZE    =    152    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      48
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

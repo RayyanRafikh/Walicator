@@ -1,0 +1,6 @@
+".\Objects\STARTUP.obj",
+".\Objects\LCD_8_bit.obj",
+".\Objects\walicator.obj" 
+TO ".\Objects\walicator" 
+PRINT(".\Listings\walicator.m51") RAMSIZE(256) 
+CODE( 0X0000-0X1FFF )
